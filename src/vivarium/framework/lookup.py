@@ -7,7 +7,7 @@ import pandas as pd
 
 from vivarium.interpolation import Interpolation
 
-
+# FIXME: drop this class (unless typechecking against TableView and I can't do this any other way)
 class TableView:
     def __call__(self, index):
         raise NotImplementedError()
@@ -29,12 +29,14 @@ class InterpolatedTableView(TableView):
     -----
     These cannot be created directly. Use the `lookup` method on the builder during setup.
     """
-
+    # FIXME: take out default for clock
     def __init__(self, data, population_view, key_columns, parameter_columns, interpolation_order, clock=None):
+        # FIXME: validation should be in manager
         if data is None or (isinstance(data, pd.DataFrame) and data.empty):
             raise ValueError("Must supply some data")
 
         self._data = data
+        # TODO: figure out if we need interpolation to be lazily generated
         self._interpolation = None
         self.population_view = population_view
         self._key_columns = key_columns
@@ -46,6 +48,7 @@ class InterpolatedTableView(TableView):
     def interpolation(self):
         if self._interpolation is None:
             data = self._data
+            # TODO: find out is data ever callable
             if callable(data) and not isinstance(data, Interpolation):
                 data = data()
 
@@ -61,7 +64,7 @@ class InterpolatedTableView(TableView):
 
     def __call__(self, index):
         pop = self.population_view.get(index)
-
+        # FIXME: this check should be if year is in param_columns
         if self.clock:
             current_time = self.clock()
             fractional_year = current_time.year
@@ -79,6 +82,7 @@ class ScalarView(TableView):
         self.value = value
 
     def __call__(self, index):
+        # FIXME: return a dataframe
         return pd.Series(self.value, index=index)
 
     def __repr__(self):
@@ -142,8 +146,9 @@ class InterpolatedDataManager:
         # Note datetime catches pandas timestamps
         if isinstance(data, Number) or isinstance(data, datetime) or isinstance(data, timedelta):
             return ScalarView(data)
-
+        # FIXME: check that there aren't duplicates
         view_columns = sorted((set(key_columns) | set(parameter_columns)) - {'year'})
+        # FIXME: always pass clock
         return InterpolatedTableView(data, self._pop_view_builder(view_columns),
                                      key_columns, parameter_columns, self._interpolation_order,
                                      self.clock if 'year' in parameter_columns else None)
